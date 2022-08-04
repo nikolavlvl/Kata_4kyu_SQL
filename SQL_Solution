@@ -1,0 +1,87 @@
+DESCRIPTION
+
+Given the the schema presented below find two actors who cast together the most and list titles of only those movies they were casting together. Order the result set alphabetically by the movie title.
+
+Table film_actor
+ Column     | Type                        | Modifiers
+------------+-----------------------------+----------
+actor_id    | smallint                    | not null
+film_id     | smallint                    | not null
+...
+Table actor
+ Column     | Type                        | Modifiers
+------------+-----------------------------+----------
+actor_id    | integer                     | not null 
+first_name  | character varying(45)       | not null
+last_name   | character varying(45)       | not null
+...
+Table film
+ Column     | Type                        | Modifiers
+------------+-----------------------------+----------
+film_id     | integer                     | not null
+title       | character varying(255)      | not null
+...
+The desired output:
+first_actor | second_actor | title
+------------+--------------+--------------------
+John Doe    | Jane Doe     | The Best Movie Ever
+...
+first_actor - Full name (First name + Last name separated by a space)
+second_actor - Full name (First name + Last name separated by a space)
+title - Movie title
+Note: actor_id of the first_actor should be lower then actor_id of the second_actor
+
+
+SOLUTION:
+
+-- CTE for pair with most films together
+WITH pair_most_films AS
+
+(SELECT first.actor_id, second.actor_id AS other_actor, COUNT(*)
+FROM
+   (
+   SELECT *
+   FROM film_actor) first
+
+   INNER JOIN
+
+   (
+   SELECT *
+   FROM film_actor) second
+   ON first.film_id = second.film_id
+WHERE first.actor_id < second.actor_id
+GROUP BY first.actor_id, second.actor_id
+ORDER BY COUNT(*) DESC
+LIMIT 1)
+
+-- Get film_id of pair actors + names
+
+SELECT CONCAT(aa.first_name, ' ', aa.last_name) AS first_actor,
+CONCAT(aa2.first_name, ' ', aa2.last_name) AS second_actor,
+title
+
+FROM
+
+(SELECT pmf.actor_id, other_actor, film_id
+FROM pair_most_films AS pmf, film_actor AS fa
+WHERE pmf.actor_id = fa.actor_id) test
+
+INNER JOIN
+
+(SELECT pmf.actor_id, other_actor, film_id
+FROM pair_most_films AS pmf, film_actor AS fa
+WHERE pmf.other_actor = fa.actor_id) test2
+
+ON test.film_id = test2.film_id 
+
+INNER JOIN film
+
+ON test2.film_id = film.film_id
+
+INNER JOIN actor aa
+
+ON test.actor_id = aa.actor_id
+
+INNER JOIN actor aa2
+
+ON test2.other_actor = aa2.actor_id
